@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+Disallow: /archive.db
+Disallow: /search_index.json
+
+Sitemap: https://online-archives.github.io/chronicon-archive-example/sitemap.xml

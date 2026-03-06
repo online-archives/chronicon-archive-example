@@ -1,0 +1,95 @@
+name: Update Archive
+
+on:
+  schedule:
+    - cron: '0 6 * * 0'  # Weekly on Sunday at 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      full_archive:
+        description: 'Run full archive instead of incremental update'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "archive-update"
+  cancel-in-progress: false
+
+jobs:
+  update-archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Restore cached database
+        id: cache-db
+        uses: actions/cache@v4
+        with:
+          path: archives/archive.db
+          key: archive-db-${{ github.run_number }}
+          restore-keys: |
+            archive-db-
+
+      - name: Create archives directory
+        run: mkdir -p archives
+
+      - name: Pull Chronicon image
+        run: docker pull ghcr.io/19-84/chronicon:latest
+
+      - name: Run archive or incremental update
+        run: |
+          if [ "${{ github.event.inputs.full_archive }}" = "true" ] || [ ! -f archives/archive.db ]; then
+            echo "Running full archive..."
+            docker run --rm \
+              -v "${{ github.workspace }}/archives:/archives" \
+              -v "${{ github.workspace }}/.chronicon.toml:/home/chronicon/.chronicon.toml:ro" \
+              ghcr.io/19-84/chronicon:latest \
+              archive --urls https://meta.discourse.org \
+              --categories 61 \
+              --formats hybrid \
+              --search-backend static \
+              --output-dir /archives
+          else
+            echo "Running incremental update..."
+            docker run --rm \
+              -v "${{ github.workspace }}/archives:/archives" \
+              -v "${{ github.workspace }}/.chronicon.toml:/home/chronicon/.chronicon.toml:ro" \
+              ghcr.io/19-84/chronicon:latest \
+              update --output-dir /archives
+          fi
+
+      - name: Re-export with latest format
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/archives:/archives" \
+            -v "${{ github.workspace }}/.chronicon.toml:/home/chronicon/.chronicon.toml:ro" \
+            ghcr.io/19-84/chronicon:latest \
+            export --output-dir /archives \
+            --formats hybrid \
+            --search-backend static
+
+      - name: Remove database from deploy directory
+        run: |
+          cp archives/archive.db /tmp/archive.db.bak
+          rm -f archives/archive.db archives/.chronicon*
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./archives
+          publish_branch: gh-pages
+          force_orphan: true
+          commit_message: 'chore: update archive'
+
+      - name: Restore database for caching
+        run: |
+          mkdir -p archives
+          cp /tmp/archive.db.bak archives/archive.db

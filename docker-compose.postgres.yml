@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: chronicon
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-chronicon_dev}
+      POSTGRES_DB: chronicon
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chronicon"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  archiver:
+    image: ghcr.io/19-84/chronicon:latest
+    # Build from source instead:
+    # build:
+    #   context: https://github.com/19-84/chronicon.git
+    #   dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://chronicon:${POSTGRES_PASSWORD:-chronicon_dev}@postgres:5432/chronicon
+      - CHRONICON_OUTPUT_DIR=/archives
+    volumes:
+      - ./archives:/archives
+      - ./.chronicon.toml:/home/chronicon/.chronicon.toml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pg-data:

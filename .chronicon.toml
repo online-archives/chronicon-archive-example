@@ -1,0 +1,27 @@
+# Chronicon configuration for meta.discourse.org Theme category archive
+# See https://github.com/19-84/chronicon for documentation
+
+[general]
+output_dir = "/archives"
+default_formats = ["hybrid"]
+
+[fetching]
+rate_limit_seconds = 1.0
+max_workers = 4
+retry_max = 5
+timeout = 15
+
+[export]
+include_users = true
+text_only = false
+canonical_base_url = "https://online-archives.github.io/chronicon-archive-example"
+
+[export.html]
+theme_adaptation = "simplified"
+enable_search = true
+
+[[sites]]
+url = "https://meta.discourse.org"
+nickname = "meta"
+categories = [61]
+rate_limit_seconds = 1.0

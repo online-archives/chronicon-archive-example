@@ -1,0 +1,13 @@
+# Database (re-generate with archive command)
+*.db
+
+# Environment files
+.env
+
+# PostgreSQL data
+pg-data/
+
+# OS files
+.DS_Store
+*.swp
+*~
