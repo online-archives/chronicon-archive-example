@@ -12,8 +12,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: "archive-update"
@@ -75,21 +73,12 @@ jobs:
             --formats hybrid \
             --search-backend static
 
-      - name: Remove database from deploy directory
+      - name: Commit updated archive
         run: |
-          cp archives/archive.db /tmp/archive.db.bak
-          rm -f archives/archive.db archives/.chronicon*
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./archives
-          publish_branch: gh-pages
-          force_orphan: true
-          commit_message: 'chore: update archive'
-
-      - name: Restore database for caching
-        run: |
-          mkdir -p archives
-          cp /tmp/archive.db.bak archives/archive.db
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add archives/
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git reset -- archives/archive.db
+          git commit -m "chore: update archive"
+          git push
